@@ -112,6 +112,42 @@ export default function WalkClient() {
     setSavedId(null);
   }
 
+  function runDemoWalk() {
+    const base: [number, number] = pos ?? [33.8362, -84.677];
+    const demoPoints: Array<[number, number]> = Array.from({ length: 60 }, (_, i) => [
+      base[0] + Math.sin(i / 7) * 0.0008 + i * 0.00004,
+      base[1] + Math.cos(i / 7) * 0.0008 + i * 0.00006,
+    ]);
+    const startTs = Date.now();
+    setStartedAt(startTs);
+    setPath([demoPoints[0]]);
+    setStatus("recording");
+    let i = 1;
+    const interval = window.setInterval(() => {
+      if (i >= demoPoints.length) {
+        window.clearInterval(interval);
+        const ended = Date.now();
+        const walk: Walk = {
+          id: newId(),
+          startedAt: startTs,
+          endedAt: ended,
+          durationMs: ended - startTs,
+          distanceMeters: pathDistance(demoPoints),
+          points: demoPoints,
+          note: "Demo walk",
+          visibility,
+        };
+        appendWalk(walk);
+        setSavedId(walk.id);
+        setNote("Demo walk");
+        setStatus("saved");
+        return;
+      }
+      setPath((prev) => [...prev, demoPoints[i]]);
+      i++;
+    }, 400);
+  }
+
   const dist = pathDistance(path);
   const elapsed = startedAt ? Date.now() - startedAt : 0;
   void tick;
@@ -217,6 +253,22 @@ export default function WalkClient() {
                   Your browser will ask permission for location. You need to say yes.
                 </p>
               )}
+              <button
+                onClick={runDemoWalk}
+                style={{
+                  marginTop: 12,
+                  width: "100%",
+                  padding: "10px",
+                  background: "transparent",
+                  color: "var(--accent)",
+                  border: "1px dashed var(--border-light)",
+                  borderRadius: 6,
+                  fontSize: 13,
+                  cursor: "pointer",
+                }}
+              >
+                Or try a demo walk →
+              </button>
             </>
           )}
 
