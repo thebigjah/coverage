@@ -3,9 +3,9 @@ import Link from "next/link";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Coverage — A prayer map for your city",
+  title: "Prayer Walk — see what your city has been prayed for",
   description:
-    "A web tool that shows your church which streets have been prayed for, which haven't, and who is walking where — so the work of intercession can be coordinated instead of accidental.",
+    "GPS-tracked prayer walks with heat maps. Walk, pray, log your route, watch the map of your neighborhood light up over time. For individuals and communities of intercessors.",
 };
 
 export const viewport: Viewport = {
@@ -43,7 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           >
             <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
               <span className="serif" style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", letterSpacing: "0.04em" }}>
-                Cover<span style={{ color: "var(--accent)" }}>age</span>
+                Prayer <span style={{ color: "var(--accent)" }}>Walk</span>
               </span>
             </Link>
             <div style={{ display: "flex", gap: 22, alignItems: "center" }}>
@@ -70,7 +70,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             marginTop: 80,
           }}
         >
-          Coverage · a Purcell Ventures product · Free for churches under 200 members
+          Prayer Walk · web sandbox · the real app is mobile, in progress
         </footer>
       </body>
     </html>
