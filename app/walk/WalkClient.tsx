@@ -51,7 +51,19 @@ export default function WalkClient() {
   const [walkerName, setWalkerName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
+  const [online, setOnline] = useState(true);
   const watchIdRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const onChange = () => setOnline(navigator.onLine);
+    setOnline(navigator.onLine);
+    window.addEventListener("online", onChange);
+    window.addEventListener("offline", onChange);
+    return () => {
+      window.removeEventListener("online", onChange);
+      window.removeEventListener("offline", onChange);
+    };
+  }, []);
 
   // Live position watcher (always on so map can show current location, even before recording)
   useEffect(() => {
@@ -248,6 +260,21 @@ export default function WalkClient() {
             }}
           >
             {error}
+          </div>
+        )}
+
+        {!online && (
+          <div
+            style={{
+              position: "absolute", top: 16, right: 16,
+              background: "rgba(232,185,104,0.12)",
+              border: "1px solid var(--accent)",
+              color: "var(--accent-bright)",
+              borderRadius: 10, padding: "8px 12px",
+              fontSize: 12, zIndex: 1000,
+            }}
+          >
+            Offline — GPS still records. Map tiles cached only.
           </div>
         )}
       </div>
