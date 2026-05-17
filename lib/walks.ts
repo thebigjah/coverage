@@ -8,6 +8,7 @@ export interface Walk {
   note: string;
   visibility: "private" | "anonymous" | "named";
   walkerName?: string;
+  title?: string;
 }
 
 const KEY = "coverage.walks.v1";

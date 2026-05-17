@@ -46,6 +46,7 @@ export default function WalkClient() {
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [tick, setTick] = useState(0);
   const [note, setNote] = useState("");
+  const [title, setTitle] = useState("");
   const [visibility, setVisibility] = useState<"private" | "anonymous" | "named">("anonymous");
   const [walkerName, setWalkerName] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -331,6 +332,22 @@ export default function WalkClient() {
               <h2 className="serif" style={{ fontSize: 26, color: "var(--text)", marginBottom: 16 }}>
                 {formatMeters(dist)} · {formatDuration(elapsed)}
               </h2>
+
+              <label style={labelStyle}>Title (optional)</label>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  const walks = JSON.parse(localStorage.getItem("coverage.walks.v1") ?? "[]");
+                  if (walks[0]?.id === savedId) {
+                    walks[0].title = e.target.value;
+                    localStorage.setItem("coverage.walks.v1", JSON.stringify(walks));
+                  }
+                }}
+                placeholder='e.g. "Sunday morning loop"'
+                style={inputStyle}
+              />
 
               <label style={labelStyle}>One-line prayer note (optional)</label>
               <input
