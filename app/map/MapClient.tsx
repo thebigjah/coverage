@@ -159,6 +159,7 @@ export default function MapClient() {
           </div>
 
           {lifetime && (
+            <>
             <div
               style={{
                 display: "grid",
@@ -189,6 +190,58 @@ export default function MapClient() {
                 <div style={{ fontSize: 18, color: "var(--accent)", fontWeight: 700 }}>{formatMeters(lifetime.longest.distanceMeters)}</div>
               </div>
             </div>
+
+            {/* 365-day walk heatmap */}
+            <div
+              style={{
+                marginBottom: 18, padding: "14px 18px",
+                background: "var(--card)", border: "1px solid var(--border)", borderRadius: 10,
+              }}
+            >
+              <div style={{ fontSize: 10, color: "var(--text-light)", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 10 }}>
+                365-day walking history
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(53, 1fr)", gap: 2 }}>
+                {(() => {
+                  const byDay: Record<string, number> = {};
+                  walks.forEach((w) => {
+                    const key = new Date(w.endedAt).toISOString().slice(0, 10);
+                    byDay[key] = (byDay[key] || 0) + w.distanceMeters;
+                  });
+                  const allVals = Object.values(byDay);
+                  const max = allVals.length ? Math.max(...allVals) : 1;
+                  const today = new Date(); today.setHours(0, 0, 0, 0);
+                  const cells = [];
+                  for (let i = 364; i >= 0; i--) {
+                    const d = new Date(today); d.setDate(d.getDate() - i);
+                    const key = d.toISOString().slice(0, 10);
+                    const v = byDay[key];
+                    let bg = "var(--bg-2)";
+                    if (v != null) {
+                      const r = v / max;
+                      const op = 0.25 + r * 0.75;
+                      bg = `rgba(232, 185, 104, ${op.toFixed(2)})`;
+                    }
+                    cells.push(
+                      <div
+                        key={key}
+                        title={v != null ? `${key}: ${formatMeters(v)}` : `${key}: no walk`}
+                        style={{ aspectRatio: "1", borderRadius: 2, background: bg }}
+                      />,
+                    );
+                  }
+                  return cells;
+                })()}
+              </div>
+              <div style={{ display: "flex", gap: 4, alignItems: "center", marginTop: 6, fontSize: 11, color: "var(--text-light)" }}>
+                <span>less</span>
+                {[0.2, 0.4, 0.6, 0.8, 1].map((op) => (
+                  <div key={op} style={{ width: 10, height: 10, borderRadius: 2, background: `rgba(232, 185, 104, ${op})` }} />
+                ))}
+                <span>more</span>
+              </div>
+            </div>
+            </>
           )}
 
           <div style={{ display: "flex", gap: 8, marginBottom: 18, flexWrap: "wrap" }}>
