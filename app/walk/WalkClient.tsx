@@ -3,7 +3,22 @@
 import { useEffect, useRef, useState } from "react";
 import { MapContainer, TileLayer, Polyline, Marker, useMap } from "react-leaflet";
 import L from "leaflet";
-import { appendWalk, formatDuration, formatMeters, newId, pathDistance, type Walk } from "@/lib/walks";
+import { appendWalk, formatDuration, formatMeters, loadWalks, newId, pathDistance, type Walk } from "@/lib/walks";
+
+const SCRIPTURE_ROTATION = [
+  { text: "Pray without ceasing.", ref: "1 Thessalonians 5:17" },
+  { text: "Seek the welfare of the city where I have sent you... pray to the LORD on its behalf.", ref: "Jeremiah 29:7" },
+  { text: "If my people, who are called by my name, will humble themselves and pray... I will hear from heaven and heal their land.", ref: "2 Chronicles 7:14" },
+  { text: "The earnest prayer of a righteous person has great power and produces wonderful results.", ref: "James 5:16" },
+  { text: "And when ye stand praying, forgive.", ref: "Mark 11:25" },
+  { text: "Watch ye and pray.", ref: "Mark 14:38" },
+  { text: "I have set the LORD always before me.", ref: "Psalm 16:8" },
+];
+
+function dailyVerse() {
+  const doy = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
+  return SCRIPTURE_ROTATION[doy % SCRIPTURE_ROTATION.length];
+}
 
 // Replace Leaflet's default marker icons (which break under bundlers)
 const walkerIcon = L.divIcon({
@@ -243,8 +258,17 @@ export default function WalkClient() {
                 Ready when you are.
               </h2>
               <p style={{ fontSize: 14, color: "var(--text-muted)", marginBottom: 18, lineHeight: 1.6 }}>
-                Tap Start before you begin walking. Coverage will record your route while you pray and stop only when you tap Stop. No background tracking.
+                Tap Start before you begin walking. Prayer Walk will record your route while you pray and stop only when you tap Stop. No background tracking.
               </p>
+              {loadWalks().length === 0 && (() => {
+                const v = dailyVerse();
+                return (
+                  <div style={{ marginBottom: 16, padding: 14, borderLeft: "3px solid var(--accent)", background: "rgba(194,161,115,0.06)", borderRadius: 6 }}>
+                    <p style={{ fontSize: 14, color: "var(--text)", fontStyle: "italic", lineHeight: 1.6, margin: 0 }}>&ldquo;{v.text}&rdquo;</p>
+                    <p style={{ fontSize: 12, color: "var(--text-light)", marginTop: 6, marginBottom: 0 }}>&mdash; {v.ref}</p>
+                  </div>
+                );
+              })()}
               <BigButton onClick={start} disabled={!pos && !error}>
                 {pos ? "Start walking" : "Waiting for GPS…"}
               </BigButton>
