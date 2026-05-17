@@ -90,11 +90,18 @@ export default function WalkClient() {
     return () => window.clearInterval(i);
   }, [status]);
 
+  function vibrate(pattern: number | number[]) {
+    try {
+      if ("vibrate" in navigator) (navigator as Navigator & { vibrate: (p: number | number[]) => boolean }).vibrate(pattern);
+    } catch {}
+  }
+
   function start() {
     if (!pos) {
       setStatus("permission");
       return;
     }
+    vibrate([20, 30, 80]);
     setPath([pos]);
     setStartedAt(Date.now());
     setStatus("recording");
@@ -102,6 +109,7 @@ export default function WalkClient() {
 
   function stop() {
     if (!startedAt) return;
+    vibrate([100, 50, 100]);
     const ended = Date.now();
     const walk: Walk = {
       id: newId(),
