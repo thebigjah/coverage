@@ -2,7 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { MapContainer, TileLayer, Polyline } from "react-leaflet";
-import { deleteWalk, formatDuration, formatMeters, formatWhen, loadWalks, type Walk } from "@/lib/walks";
+import {
+  deleteWalk, downloadFile, formatDuration, formatMeters, formatWhen,
+  lifetimeStats, loadWalks, saveWalks, walkToGpx, type Walk,
+} from "@/lib/walks";
 
 export default function MapClient() {
   const [walks, setWalks] = useState<Walk[]>([]);
@@ -11,6 +14,8 @@ export default function MapClient() {
   useEffect(() => {
     setWalks(loadWalks());
   }, []);
+
+  const lifetime = useMemo(() => lifetimeStats(walks), [walks]);
 
   const center = useMemo<[number, number]>(() => {
     const allPts = walks.flatMap((w) => w.points);
@@ -23,6 +28,39 @@ export default function MapClient() {
   function rmWalk(id: string) {
     setWalks(deleteWalk(id));
     if (selected === id) setSelected(null);
+  }
+
+  function exportGpx(walk: Walk) {
+    downloadFile(walkToGpx(walk), `prayer-walk-${walk.id}.gpx`, "application/gpx+xml");
+  }
+
+  function backupAll() {
+    if (walks.length === 0) return;
+    downloadFile(
+      JSON.stringify({ exportedAt: Date.now(), walks }, null, 2),
+      `prayer-walks-backup-${new Date().toISOString().slice(0, 10)}.json`,
+      "application/json",
+    );
+  }
+
+  function restoreFromFile(file: File) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(String(reader.result));
+        const incoming: Walk[] = Array.isArray(parsed) ? parsed : parsed.walks;
+        if (!Array.isArray(incoming)) throw new Error("File doesn't contain a walks array");
+        const existingIds = new Set(walks.map((w) => w.id));
+        const merged = [...walks, ...incoming.filter((w) => !existingIds.has(w.id))];
+        merged.sort((a, b) => b.endedAt - a.endedAt);
+        saveWalks(merged);
+        setWalks(merged);
+        alert(`Imported ${incoming.length} walks (${merged.length - walks.length} new).`);
+      } catch (e) {
+        alert("Couldn't import: " + String(e));
+      }
+    };
+    reader.readAsText(file);
   }
 
   // Heat-style intensity by recency: newer walks = brighter
@@ -113,11 +151,65 @@ export default function MapClient() {
       {/* WALK LIST */}
       <div style={{ background: "var(--bg-2)", borderTop: "1px solid var(--border)" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto", padding: "24px" }}>
-          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 18 }}>
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 18, flexWrap: "wrap", gap: 10 }}>
             <h2 className="serif" style={{ fontSize: 22, color: "var(--text)" }}>Your walks</h2>
             <p style={{ fontSize: 13, color: "var(--text-light)" }}>
               {walks.length} {walks.length === 1 ? "walk" : "walks"} · saved locally on this device
             </p>
+          </div>
+
+          {lifetime && (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+                gap: 12, marginBottom: 18,
+                padding: "16px 18px",
+                background: "var(--card)",
+                border: "1px solid var(--border)",
+                borderRadius: 10,
+              }}
+            >
+              <div>
+                <div style={{ fontSize: 10, color: "var(--text-light)", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 4 }}>Total</div>
+                <div style={{ fontSize: 18, color: "var(--text)", fontWeight: 700 }}>{formatMeters(lifetime.totalDist)}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 10, color: "var(--text-light)", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 4 }}>Walks</div>
+                <div style={{ fontSize: 18, color: "var(--text)", fontWeight: 700 }}>{walks.length}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 10, color: "var(--text-light)", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 4 }}>Streak</div>
+                <div style={{ fontSize: 18, color: lifetime.streak > 0 ? "var(--accent-bright)" : "var(--text)", fontWeight: 700 }}>
+                  {lifetime.streak} {lifetime.streak === 1 ? "day" : "days"}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: 10, color: "var(--text-light)", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 4 }}>PR</div>
+                <div style={{ fontSize: 18, color: "var(--accent)", fontWeight: 700 }}>{formatMeters(lifetime.longest.distanceMeters)}</div>
+              </div>
+            </div>
+          )}
+
+          <div style={{ display: "flex", gap: 8, marginBottom: 18, flexWrap: "wrap" }}>
+            {walks.length > 0 && (
+              <button
+                onClick={backupAll}
+                style={{ padding: "8px 14px", background: "transparent", color: "var(--text)", border: "1px solid var(--border-light)", borderRadius: 6, fontSize: 13, cursor: "pointer" }}
+              >
+                Backup all (JSON)
+              </button>
+            )}
+            <label
+              style={{ padding: "8px 14px", background: "transparent", color: "var(--text)", border: "1px solid var(--border-light)", borderRadius: 6, fontSize: 13, cursor: "pointer" }}
+            >
+              Restore from file
+              <input
+                type="file" accept=".json,application/json"
+                style={{ display: "none" }}
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) restoreFromFile(f); e.currentTarget.value = ""; }}
+              />
+            </label>
           </div>
 
           {walks.length === 0 && (
@@ -163,16 +255,28 @@ export default function MapClient() {
                       </div>
                     )}
                   </div>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); if (confirm("Delete this walk?")) rmWalk(w.id); }}
-                    style={{
-                      background: "transparent", border: "1px solid var(--border-light)",
-                      color: "var(--text-light)", borderRadius: 6, padding: "6px 10px",
-                      fontSize: 12, cursor: "pointer", alignSelf: "start",
-                    }}
-                  >
-                    Delete
-                  </button>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, alignSelf: "start" }}>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); exportGpx(w); }}
+                      style={{
+                        background: "transparent", border: "1px solid var(--border-light)",
+                        color: "var(--accent)", borderRadius: 6, padding: "6px 10px",
+                        fontSize: 12, cursor: "pointer",
+                      }}
+                    >
+                      GPX
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); if (confirm("Delete this walk?")) rmWalk(w.id); }}
+                      style={{
+                        background: "transparent", border: "1px solid var(--border-light)",
+                        color: "var(--text-light)", borderRadius: 6, padding: "6px 10px",
+                        fontSize: 12, cursor: "pointer",
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
               );
             })}

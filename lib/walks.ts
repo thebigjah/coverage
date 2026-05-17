@@ -82,3 +82,56 @@ export function formatWhen(ts: number): string {
 export function newId(): string {
   return `w_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
+
+export function walkToGpx(walk: Walk): string {
+  const startIso = new Date(walk.startedAt).toISOString();
+  const name = walk.note?.trim() || `Prayer walk ${new Date(walk.startedAt).toLocaleDateString()}`;
+  const escape = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const trkpts = walk.points
+    .map((p, i) => {
+      const t = new Date(walk.startedAt + (i / Math.max(walk.points.length - 1, 1)) * walk.durationMs).toISOString();
+      return `        <trkpt lat="${p[0].toFixed(7)}" lon="${p[1].toFixed(7)}"><time>${t}</time></trkpt>`;
+    })
+    .join("\n");
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Prayer Walk" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata>
+    <name>${escape(name)}</name>
+    <time>${startIso}</time>
+  </metadata>
+  <trk>
+    <name>${escape(name)}</name>
+    <trkseg>
+${trkpts}
+    </trkseg>
+  </trk>
+</gpx>
+`;
+}
+
+export function downloadFile(content: string, filename: string, mime: string): void {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+export function lifetimeStats(walks: Walk[]) {
+  if (walks.length === 0) return null;
+  const totalDist = walks.reduce((s, w) => s + w.distanceMeters, 0);
+  const totalDur = walks.reduce((s, w) => s + w.durationMs, 0);
+  const longest = walks.reduce((a, b) => (b.distanceMeters > a.distanceMeters ? b : a));
+  const dayKeys = new Set(walks.map((w) => new Date(w.endedAt).toDateString()));
+  let streak = 0;
+  const d = new Date();
+  while (dayKeys.has(d.toDateString())) {
+    streak++;
+    d.setDate(d.getDate() - 1);
+  }
+  return { totalDist, totalDur, longest, streak, distinctDays: dayKeys.size };
+}
